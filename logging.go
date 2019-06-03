@@ -42,7 +42,7 @@ func GroupingBy(c context.Context, w http.ResponseWriter, r *http.Request, f fun
 	logCtx := setTraceID(c, fmt.Sprintf("%d", rand.Uint64()))
 	logCtx = setSeverity(logCtx, &defaultSeverity)
 
-	res := &logResponse{}
+	res := &logResponse{code: http.StatusOK}
 	f(logCtx, res, r)
 	w.WriteHeader(res.code)
 	if _, err := w.Write(res.body); err != nil {

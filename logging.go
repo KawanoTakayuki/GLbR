@@ -51,6 +51,9 @@ func GroupingBy(c context.Context, w http.ResponseWriter, r *http.Request, f fun
 
 	maxSeverity, _ := getSeverity(logCtx)
 	traceID, _ := getTraceID(logCtx)
+	if r.URL.String() == "" {
+		r.URL.Path = "Empty_RequestUrl"
+	}
 	client.Logger("request_log").Log(logging.Entry{
 		HTTPRequest: &logging.HTTPRequest{
 			Status:       res.code,

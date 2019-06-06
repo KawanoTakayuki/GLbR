@@ -9,52 +9,57 @@ import (
 
 	"cloud.google.com/go/logging"
 	"google.golang.org/api/option"
+	"google.golang.org/genproto/googleapis/api/monitoredres"
 )
 
 // http.ResponseWriter interface
 type logResponse struct {
-	body []byte
-	code int
+	body   []byte
+	code   int
+	origin http.ResponseWriter
 }
 
 func (lr *logResponse) Header() http.Header {
-	return make(http.Header)
+	return lr.origin.Header()
 }
 func (lr *logResponse) Write(body []byte) (int, error) {
 	lr.body = body
-	return len(body), nil
+	return lr.origin.Write(body)
 }
 func (lr *logResponse) WriteHeader(statusCode int) {
 	lr.code = statusCode
+	lr.origin.WriteHeader(statusCode)
 }
 
 var (
-	client      *logging.Client // logClient
-	severityKey = "severity"    // severity key
-	traceIDKey  = "trace-id"    // traceid key
-	logIDKey    = "log-id"      // logid key
+	client               *logging.Client        // logClient
+	severityKey          = "severity"           // severity key
+	traceIDKey           = "trace-id"           // traceid key
+	logIDKey             = "log-id"             // logid key
+	monitoredResourceKey = "monitored-resource" // monitoredresource key
 )
 
 // GroupingBy ログをリクエストでグループ化する
-func GroupingBy(c context.Context, w http.ResponseWriter, r *http.Request, f func(c context.Context, w http.ResponseWriter, r *http.Request)) {
-	s := time.Now()
+func GroupingBy(c context.Context, w http.ResponseWriter, r *http.Request, parentLogID string, f func(c context.Context, w http.ResponseWriter, r *http.Request)) {
+	if logid, ok := getLogID(c); !ok {
+		panic("empty to LogID, call initilize function 'NewLogging'")
+	} else if logid == parentLogID {
+		panic("parentLogID match to LogID")
+	}
 	defaultSeverity := logging.Default
 	logCtx := setTraceID(c, fmt.Sprintf("%d", rand.Uint64()))
 	logCtx = setSeverity(logCtx, &defaultSeverity)
 
-	res := &logResponse{code: http.StatusOK}
+	res := &logResponse{code: http.StatusOK, origin: w}
+	s := time.Now()
 	f(logCtx, res, r)
-	w.WriteHeader(res.code)
-	if _, err := w.Write(res.body); err != nil {
-		Criticalf(logCtx, err.Error())
-	}
 
 	maxSeverity, _ := getSeverity(logCtx)
 	traceID, _ := getTraceID(logCtx)
 	if r.URL.String() == "" {
 		r.URL.Path = "Empty_RequestUrl"
 	}
-	client.Logger("request_log").Log(logging.Entry{
+	push(parentLogID, logging.Entry{
 		HTTPRequest: &logging.HTTPRequest{
 			Status:       res.code,
 			ResponseSize: int64(len(res.body)),
@@ -63,16 +68,35 @@ func GroupingBy(c context.Context, w http.ResponseWriter, r *http.Request, f fun
 		},
 		Trace:    traceID,
 		Severity: *maxSeverity,
+		Resource: getMonitoredResource(c),
 	})
 }
 
 // NewLogging 新しいLoggingContextを取得する
-func NewLogging(c context.Context, parent string, opts ...option.ClientOption) (logctx context.Context, err error) {
+func NewLogging(c context.Context, parent, logID string, opts ...option.ClientOption) (logctx context.Context, err error) {
 	client, err = logging.NewClient(c, parent, opts...)
 	rand.Seed(time.Now().Unix())
-	logctx = setLogID(c, "message_log")
+	logctx = setLogID(c, logID)
 	logctx = setTraceID(logctx, fmt.Sprintf("%d", rand.Uint64()))
 	return
+}
+
+// MonitoredResource 監視対象の情報をセット
+// https://cloud.google.com/monitoring/api/resources
+// Default: resourceType = project, resourceLabel = {"project_id": $PROJECT_ID}
+func MonitoredResource(c context.Context, resourceType string, resourceLabel map[string]string) context.Context {
+	mr := monitoredres.MonitoredResource{
+		Type:   resourceType,
+		Labels: resourceLabel,
+	}
+	return context.WithValue(c, &monitoredResourceKey, mr)
+}
+
+func getMonitoredResource(c context.Context) *monitoredres.MonitoredResource {
+	if mr, ok := c.Value(&monitoredResourceKey).(monitoredres.MonitoredResource); ok {
+		return &mr
+	}
+	return nil
 }
 
 // parent severity setter
@@ -108,6 +132,13 @@ func getLogID(c context.Context) (string, bool) {
 	return logID, ok
 }
 
+func push(id string, entry logging.Entry) {
+	if client == nil {
+		panic("logging client is nil, call initilize function 'NewLogging'")
+	}
+	client.Logger(id).Log(entry)
+}
+
 // sendEntry ログを送信する
 func sendEntry(c context.Context, severity logging.Severity, format string, value ...interface{}) {
 	if maxSeverity, ok := getSeverity(c); ok {
@@ -118,10 +149,11 @@ func sendEntry(c context.Context, severity logging.Severity, format string, valu
 	}
 	traceID, _ := getTraceID(c)
 	logID, _ := getLogID(c)
-	client.Logger(logID).Log(logging.Entry{
+	push(logID, logging.Entry{
 		Payload:  fmt.Sprintf(format, value...),
 		Severity: severity,
 		Trace:    traceID,
+		Resource: getMonitoredResource(c),
 	})
 }
 

@@ -74,6 +74,9 @@ func GroupingBy(c context.Context, w http.ResponseWriter, r *http.Request, paren
 
 // NewLogging 新しいLoggingContextを取得する
 func NewLogging(c context.Context, parent, logID string, opts ...option.ClientOption) (logctx context.Context, err error) {
+	if logID == "" || 512 <= len(logID) {
+		return c, fmt.Errorf("logID empty or more than 512 char")
+	}
 	client, err = logging.NewClient(c, parent, opts...)
 	rand.Seed(time.Now().Unix())
 	logctx = setLogID(c, logID)

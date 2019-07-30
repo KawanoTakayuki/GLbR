@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"cloud.google.com/go/logging"
-	"google.golang.org/genproto/googleapis/api/monitoredres"
 )
 
 const (
@@ -42,17 +41,17 @@ func (o labelOption) loggerOption() logging.LoggerOption {
 // MonitoredResource ログエントリに付加するリソースラベル
 // https://cloud.google.com/monitoring/api/resources のResourceTypeのLabelsを自動で補完します。
 // Default: resourceType = project, resourceLabel = {"project_id": $PROJECT_ID}
-func MonitoredResource(resourceType string) Option {
-	return monitoredResourceOption{&monitoredres.MonitoredResource{Type: resourceType}}
-}
+// func MonitoredResource(resourceType string) Option {
+// 	return monitoredResourceOption{&monitoredres.MonitoredResource{Type: resourceType}}
+// }
 
-type monitoredResourceOption struct {
-	mr *monitoredres.MonitoredResource
-}
+// type monitoredResourceOption struct {
+// 	mr *monitoredres.MonitoredResource
+// }
 
-func (o monitoredResourceOption) loggerOption() logging.LoggerOption {
-	return logging.CommonResource(o.mr)
-}
+// func (o monitoredResourceOption) loggerOption() logging.LoggerOption {
+// 	return logging.CommonResource(o.mr)
+// }
 
 // ConcurrentWrite ログエントリの同時書き込み数　Default: 1
 func ConcurrentWrite(limit int) Option { return concurrentOption(limit) }

@@ -2,14 +2,33 @@ package glbr
 
 import (
 	"context"
+	"os"
 
 	"google.golang.org/genproto/googleapis/api/monitoredres"
 )
 
-// MonitoredResourceLabel 監視対象の情報を手動でセット（optionより優先）
+// AppEngineResource appengine log resource
+func (s Service) AppEngineResource() Service {
+	return s.MonitoredResource("gae_app", map[string]string{
+		"project_id": s.projectID,
+		"module_id":  os.Getenv("GAE_SERVICE"),
+		"version_id": os.Getenv("GAE_VERSION"),
+	})
+}
+
+// CloudFunctionsResource cloudfunctions log resource
+func (s Service) CloudFunctionsResource() Service {
+	return s.MonitoredResource("cloud_function", map[string]string{
+		"function_name": os.Getenv("FUNCTION_NAME"),
+		"project_id":    s.projectID,
+		"region":        os.Getenv("FUNCTION_REGION"),
+	})
+}
+
+// MonitoredResource 監視対象の情報を手動でセット（optionより優先）
 // https://cloud.google.com/monitoring/api/resources
 // Default: resourceType = project, resourceLabel = {"project_id": $PROJECT_ID}
-func (s Service) MonitoredResourceLabel(resourceType string, resourceLabel map[string]string) Service {
+func (s Service) MonitoredResource(resourceType string, resourceLabel map[string]string) Service {
 	// logging.CommonResource()はresourceBlockに反映されない？
 	mr := monitoredres.MonitoredResource{
 		Type:   resourceType,

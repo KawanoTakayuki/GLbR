@@ -86,7 +86,8 @@ Google Cloud Platform: Stackdriver Logging client wrapper
         }
         defer log.Close()
 
-        log = log.Option(glbr.MonitoredResource("ResourceType"))
+        ResourceLavel := map[string]string{"key": "value"}
+        log = log.Option(glbr.MonitoredResource("ResorceType", ResourceLavel))
         glbr.Debugf(log.Context(), "log")
     }
     ```

@@ -42,8 +42,11 @@ func (o labelOption) loggerOption() logging.LoggerOption {
 // MonitoredResource ログエントリに付加するリソースラベル
 // https://cloud.google.com/monitoring/api/resources のResourceTypeのLabelsを自動で補完します。
 // Default: resourceType = project, resourceLabel = {"project_id": $PROJECT_ID}
-func MonitoredResource(resourceType string) Option {
-	return monitoredResourceOption{&monitoredres.MonitoredResource{Type: resourceType}}
+func MonitoredResource(resourceType string, resourceLabel map[string]string) Option {
+	return monitoredResourceOption{&monitoredres.MonitoredResource{
+		Type:   resourceType,
+		Labels: resourceLabel,
+	}}
 }
 
 type monitoredResourceOption struct {

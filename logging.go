@@ -13,11 +13,10 @@ import (
 
 // Service loggingService
 type Service struct {
-	ctx       context.Context
-	client    *logging.Client
-	option    []logging.LoggerOption
-	logID     string
-	projectID string
+	ctx    context.Context
+	client *logging.Client
+	option []logging.LoggerOption
+	logID  string
 }
 
 // NewLogging 新しいLoggingServiceを取得する
@@ -28,11 +27,10 @@ func NewLogging(c context.Context, projectID, logID string, opts ...option.Clien
 	client, err := logging.NewClient(c, projectID, opts...)
 	logctx := setLogID(c, logID)
 	service = Service{
-		ctx:       logctx,
-		client:    client,
-		option:    make([]logging.LoggerOption, 0),
-		logID:     logID,
-		projectID: projectID,
+		ctx:    logctx,
+		client: client,
+		option: make([]logging.LoggerOption, 0),
+		logID:  logID,
 	}
 	return
 }

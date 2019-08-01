@@ -39,7 +39,6 @@ func sendEntry(c context.Context, severity logging.Severity, format string, valu
 		Severity:  severity,
 		Trace:     *traceID,
 		Timestamp: time.Now(),
-		Resource:  getMonitoredResource(c),
 	})
 }
 

@@ -121,7 +121,6 @@ func (s Service) GroupingBy(parentLogID string) (Service, GroupingFunc) {
 				Timestamp: et,
 				Trace:     traceID,
 				Severity:  severity,
-				Resource:  getMonitoredResource(s.ctx),
 			})
 		})
 	}

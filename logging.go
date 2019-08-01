@@ -26,9 +26,7 @@ func NewLogging(c context.Context, projectID, logID string, opts ...option.Clien
 		return Service{}, fmt.Errorf("logID empty or more than 512 char")
 	}
 	client, err := logging.NewClient(c, projectID, opts...)
-	rand.Seed(time.Now().UnixNano())
 	logctx := setLogID(c, logID)
-	logctx = setTraceID(logctx, fmt.Sprintf("%d", rand.Uint64()))
 	service = Service{
 		ctx:       logctx,
 		client:    client,
@@ -49,51 +47,82 @@ func (s Service) Close() (err error) {
 	return s.client.Close()
 }
 
+// NewTraceID 新しいTraceIDを返す
+func newTraceID() string {
+	rand.Seed(time.Now().UnixNano())
+	return fmt.Sprintf("%d", rand.Uint64())
+}
+
+// http.ResponseWriter interface
+type logResponse struct {
+	body   []byte
+	code   int
+	origin http.ResponseWriter
+}
+
+func (lr *logResponse) Header() http.Header {
+	return lr.origin.Header()
+}
+func (lr *logResponse) Write(body []byte) (int, error) {
+	lr.body = body
+	return lr.origin.Write(body)
+}
+func (lr *logResponse) WriteHeader(statusCode int) {
+	lr.code = statusCode
+	lr.origin.WriteHeader(statusCode)
+}
+
 // GroupingFunc グループ化される処理
-// return code: httpStatusCode size: httpResponseSize
-type GroupingFunc func(ctx context.Context) (code int, size int64)
+type GroupingFunc func(http.Handler) http.Handler
 
 // GroupingBy ログをリクエストでグループ化する
-func (s Service) GroupingBy(r *http.Request, parentLogID string, f GroupingFunc) {
-	if _, ok := getGroupKey(s.ctx); ok {
-		// known group
-		f(s.ctx)
-		return
-	}
-
-	if r == nil {
-		panic("empty to http.Request")
-	}
-	if parentLogID == "" {
-		panic("empty to parentLogID")
-	}
-	if s.logID == parentLogID {
-		panic("do not make parentLogID and the argument logID of 'NewLogging' functin identical")
-	}
+func (s Service) GroupingBy(parentLogID string) (Service, GroupingFunc) {
 
 	severity := logging.Default
-	traceID := fmt.Sprintf("%d", rand.Uint64())
 	s.ctx = setSeverity(s.ctx, &severity)
-	s.ctx = setTraceID(s.ctx, traceID)
-	s.ctx = setGroupKey(s.ctx, "grouping")
 
-	st := time.Now()
-	code, size := f(s.Context())
-	et := time.Now()
+	traceID := newTraceID()
+	s.ctx = setTraceID(s.ctx, &traceID)
 
-	if r.URL.String() == "" {
-		r.URL.Path = "Empty_RequestUrl"
+	return s, func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r == nil {
+				panic("http.Request is nil")
+			}
+			if parentLogID == "" {
+				panic("empty to parentLogID")
+			}
+			if s.logID == parentLogID {
+				panic("do not make parentLogID and the argument logID of 'NewLogging' functin identical")
+			}
+
+			tID, _ := getTraceID(s.ctx)
+			if tID == nil {
+				panic("grouping traceID is nil")
+			}
+			*tID = newTraceID()
+
+			res := &logResponse{origin: w}
+
+			st := time.Now()
+			next.ServeHTTP(res, r)
+			et := time.Now()
+
+			if r.URL.String() == "" {
+				r.URL.Path = "Empty_RequestUrl"
+			}
+			s.client.Logger(parentLogID, s.option...).Log(logging.Entry{
+				HTTPRequest: &logging.HTTPRequest{
+					Status:       res.code,
+					ResponseSize: int64(len(res.body)),
+					Request:      r,
+					Latency:      et.Sub(st),
+				},
+				Timestamp: et,
+				Trace:     traceID,
+				Severity:  severity,
+				Resource:  getMonitoredResource(s.ctx),
+			})
+		})
 	}
-	s.client.Logger(parentLogID, s.option...).Log(logging.Entry{
-		HTTPRequest: &logging.HTTPRequest{
-			Status:       code,
-			ResponseSize: int64(size),
-			Request:      r,
-			Latency:      et.Sub(st),
-		},
-		Timestamp: et,
-		Trace:     traceID,
-		Severity:  severity,
-		Resource:  getMonitoredResource(s.ctx),
-	})
 }

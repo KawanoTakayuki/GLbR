@@ -8,24 +8,12 @@ import (
 
 var (
 	loggerKey            = "loggerClient"       // logger key
-	groupingKey          = "grouping"           // group key
 	requestKey           = "request"            // request key
 	severityKey          = "severity"           // severity key
 	traceIDKey           = "trace-id"           // traceid key
 	logIDKey             = "log-id"             // logid key
 	monitoredResourceKey = "monitored-resource" // monitoredresource key
 )
-
-// groupkey setter
-func setGroupKey(c context.Context, key string) context.Context {
-	return context.WithValue(c, &groupingKey, key)
-}
-
-// groupkey getter
-func getGroupKey(c context.Context) (string, bool) {
-	group, ok := c.Value(&groupingKey).(string)
-	return group, ok
-}
 
 // logger setter
 func setLogger(c context.Context, logger *logging.Logger) context.Context {
@@ -50,13 +38,13 @@ func getSeverity(c context.Context) (*logging.Severity, bool) {
 }
 
 // traceid setter
-func setTraceID(c context.Context, traceID string) context.Context {
+func setTraceID(c context.Context, traceID *string) context.Context {
 	return context.WithValue(c, &traceIDKey, traceID)
 }
 
 // traceid getter
-func getTraceID(c context.Context) (string, bool) {
-	traceID, ok := c.Value(&traceIDKey).(string)
+func getTraceID(c context.Context) (*string, bool) {
+	traceID, ok := c.Value(&traceIDKey).(*string)
 	return traceID, ok
 }
 

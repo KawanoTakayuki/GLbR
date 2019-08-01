@@ -29,11 +29,15 @@ func sendEntry(c context.Context, severity logging.Severity, format string, valu
 			setSeverity(c, maxSeverity)
 		}
 	}
-	traceID, _ := getTraceID(c)
+	traceID, ok := getTraceID(c)
+	if !ok {
+		traceID = new(string)
+		*traceID = newTraceID()
+	}
 	push(c, logging.Entry{
 		Payload:   fmt.Sprintf(format, value...),
 		Severity:  severity,
-		Trace:     traceID,
+		Trace:     *traceID,
 		Timestamp: time.Now(),
 		Resource:  getMonitoredResource(c),
 	})

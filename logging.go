@@ -100,7 +100,7 @@ func (s Service) GroupingBy(parentLogID string) (Service, GroupingFunc) {
 			}
 			*tID = newTraceID()
 
-			res := &logResponse{origin: w}
+			res := &logResponse{code: http.StatusOK, origin: w}
 
 			st := time.Now()
 			next.ServeHTTP(res, r)

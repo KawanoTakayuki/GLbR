@@ -3,6 +3,7 @@ package glbr
 import (
 	"context"
 	"fmt"
+	"io"
 	"time"
 
 	"cloud.google.com/go/logging"
@@ -18,6 +19,11 @@ func push(c context.Context, entry logging.Entry) {
 		logger.Log(entry)
 	} else {
 		fmt.Println("logger not found")
+	}
+	if w, ok := getIOWriter(c); ok {
+		pl, _ := entry.Payload.(string)
+		tm := entry.Timestamp.Format("2006/01/02 03:04:05")
+		io.WriteString(w, fmt.Sprintf("%s %s: %s\n", tm, entry.Severity, pl))
 	}
 }
 

@@ -2,6 +2,7 @@ package glbr
 
 import (
 	"context"
+	"io"
 
 	"cloud.google.com/go/logging"
 )
@@ -12,6 +13,7 @@ var (
 	severityKey          = "severity"           // severity key
 	traceIDKey           = "trace-id"           // traceid key
 	logIDKey             = "log-id"             // logid key
+	iowriteKey           = "io-write"           // iowrite key
 	monitoredResourceKey = "monitored-resource" // monitoredresource key
 )
 
@@ -57,4 +59,15 @@ func setLogID(c context.Context, logID string) context.Context {
 func getLogID(c context.Context) (string, bool) {
 	logID, ok := c.Value(&logIDKey).(string)
 	return logID, ok
+}
+
+// io.Writer setter
+func setIOWriter(c context.Context, w io.Writer) context.Context {
+	return context.WithValue(c, &iowriteKey, w)
+}
+
+// io.Writer getter
+func getIOWriter(c context.Context) (io.Writer, bool) {
+	w, ok := c.Value(&iowriteKey).(io.Writer)
+	return w, ok
 }

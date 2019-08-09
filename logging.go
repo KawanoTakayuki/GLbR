@@ -3,6 +3,7 @@ package glbr
 import (
 	"context"
 	"fmt"
+	"io"
 	"math/rand"
 	"net/http"
 	"time"
@@ -33,6 +34,12 @@ func NewLogging(c context.Context, projectID, logID string, opts ...option.Clien
 		logID:  logID,
 	}
 	return
+}
+
+// WithIOWriter write buffer after log output
+func (s Service) WithIOWriter(w io.Writer) Service {
+	s.ctx = setIOWriter(s.ctx, w)
+	return s
 }
 
 // Context log service context

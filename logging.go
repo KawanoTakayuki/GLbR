@@ -77,19 +77,12 @@ func (lr *logResponse) WriteHeader(statusCode int) {
 	lr.origin.WriteHeader(statusCode)
 }
 
-// GroupingFunc グループ化される処理
-type GroupingFunc func(http.Handler) http.Handler
+// GroupingHandler グループ化される処理
+type GroupingHandler func(http.Handler) http.Handler
 
-// GroupingBy ログをリクエストでグループ化する
-func (s Service) GroupingBy(parentLogID string) (Service, GroupingFunc) {
-
-	severity := logging.Default
-	s.ctx = setSeverity(s.ctx, &severity)
-
-	traceID := newTraceID()
-	s.ctx = setTraceID(s.ctx, &traceID)
-
-	return s, func(next http.Handler) http.Handler {
+// GroupedBy ログをリクエストでグループ化する
+func (s Service) GroupedBy(parentLogID string) GroupingHandler {
+	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r == nil {
 				panic("http.Request is nil")
@@ -101,18 +94,16 @@ func (s Service) GroupingBy(parentLogID string) (Service, GroupingFunc) {
 				panic("do not make parentLogID and the argument logID of 'NewLogging' functin identical")
 			}
 
-			tID, _ := getTraceID(s.ctx)
-			if tID == nil {
-				panic("grouping traceID is nil")
-			}
-			*tID = newTraceID()
+			severity := logging.Default
+			traceID := newTraceID()
+			ctx := s.Context()
+			ctx = setSeverity(ctx, &severity)
+			ctx = setTraceID(ctx, &traceID)
 
 			res := &logResponse{code: http.StatusOK, origin: w}
-
 			st := time.Now()
-			next.ServeHTTP(res, r)
+			next.ServeHTTP(res, r.WithContext(ctx))
 			et := time.Now()
-
 			if r.URL.String() == "" {
 				r.URL.Path = "Empty_RequestUrl"
 			}

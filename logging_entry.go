@@ -32,7 +32,6 @@ func sendEntry(c context.Context, severity logging.Severity, format string, valu
 	if maxSeverity, ok := getSeverity(c); ok {
 		if *maxSeverity < severity {
 			*maxSeverity = severity
-			setSeverity(c, maxSeverity)
 		}
 	}
 	traceID, ok := getTraceID(c)

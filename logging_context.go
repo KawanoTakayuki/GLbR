@@ -50,17 +50,6 @@ func getTraceID(c context.Context) (*string, bool) {
 	return traceID, ok
 }
 
-// logid setter
-func setLogID(c context.Context, logID string) context.Context {
-	return context.WithValue(c, &logIDKey, logID)
-}
-
-// logid getter
-func getLogID(c context.Context) (string, bool) {
-	logID, ok := c.Value(&logIDKey).(string)
-	return logID, ok
-}
-
 // io.Writer setter
 func setIOWriter(c context.Context, w io.Writer) context.Context {
 	return context.WithValue(c, &iowriteKey, w)

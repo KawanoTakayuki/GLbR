@@ -26,9 +26,8 @@ func NewLogging(c context.Context, projectID, logID string, opts ...option.Clien
 		return Service{}, fmt.Errorf("logID empty or more than 512 char")
 	}
 	client, err := logging.NewClient(c, projectID, opts...)
-	logctx := setLogID(c, logID)
 	service = Service{
-		ctx:    logctx,
+		ctx:    c,
 		client: client,
 		option: make([]logging.LoggerOption, 0),
 		logID:  logID,

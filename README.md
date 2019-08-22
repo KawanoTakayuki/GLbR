@@ -43,20 +43,20 @@ Google Cloud Platform: Stackdriver Logging client wrapper
         }
         defer logService.Close() // close only once
 
-        groupService, groupLog := logService.GroupingBy("ParentLogID")
-
         /*
             each request
         */
+        groupLog := logService.GroupedBy("ParentLogID")
+
         // group
         http.Handle("/group", groupLog(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-            c := groupService.Context() // groupService
+            c := r.Context() // request context
             glbr.Debugf(c, "group log")
         })))
 
         // no group
         http.Handle("/no-group", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-            c := logService.Context() // no groupService
+            c := logService.Context() // glbr context
             glbr.Debugf(c, "no group log")
         }))
 
@@ -66,7 +66,7 @@ Google Cloud Platform: Stackdriver Logging client wrapper
             all request
         */
         http.HandleFunc("/all-group", func(w http.ResponseWriter, r *http.Request) {
-            c := groupService.Context() // use groupService, not use logService
+            c := r.Context() // request context
             glbr.Debugf(c, "all group log")
         })
 

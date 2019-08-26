@@ -21,7 +21,8 @@ type Service struct {
 }
 
 // NewLogging 新しいLoggingServiceを取得する
-func NewLogging(c context.Context, projectID, logID string, opts ...option.ClientOption) (service Service, err error) {
+func NewLogging(projectID, logID string, opts ...option.ClientOption) (service Service, err error) {
+	c := context.Background()
 	if logID == "" || 512 <= len(logID) {
 		return Service{}, fmt.Errorf("logID empty or more than 512 char")
 	}
@@ -33,6 +34,27 @@ func NewLogging(c context.Context, projectID, logID string, opts ...option.Clien
 		logID:  logID,
 	}
 	return
+}
+
+// WithContext 他のcontextを受け入れる
+func (s Service) WithContext(c context.Context) Service {
+	if c == nil {
+		panic("nil context")
+	}
+	if logger, ok := getLogger(s.ctx); ok {
+		c = setLogger(c, logger)
+	}
+	if severity, ok := getSeverity(s.ctx); ok {
+		c = setSeverity(c, severity)
+	}
+	if trace, ok := getTraceID(s.ctx); ok {
+		c = setTraceID(c, trace)
+	}
+	if iowrite, ok := getIOWriter(s.ctx); ok {
+		c = setIOWriter(c, iowrite)
+	}
+	s.ctx = c
+	return s
 }
 
 // WithIOWriter write buffer after log output

@@ -53,6 +53,9 @@ func (s Service) WithContext(c context.Context) Service {
 	if iowrite, ok := getIOWriter(s.ctx); ok {
 		c = setIOWriter(c, iowrite)
 	}
+	if group, ok := getGroup(s.ctx); ok {
+		c = setGroup(c, group)
+	}
 	s.ctx = c
 	return s
 }
@@ -105,6 +108,11 @@ type GroupingHandler func(http.Handler) http.Handler
 func (s Service) GroupedBy(parentLogID string) GroupingHandler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if _, ok := getGroup(r.Context()); ok {
+				next.ServeHTTP(w, r) // already in the group
+				return
+			}
+
 			if r == nil {
 				panic("http.Request is nil")
 			}
@@ -120,6 +128,7 @@ func (s Service) GroupedBy(parentLogID string) GroupingHandler {
 			ctx := s.Context()
 			ctx = setSeverity(ctx, &severity)
 			ctx = setTraceID(ctx, &traceID)
+			ctx = setGroup(ctx, traceID)
 
 			res := &logResponse{code: http.StatusOK, origin: w}
 			st := time.Now()

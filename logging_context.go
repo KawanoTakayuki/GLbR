@@ -14,6 +14,7 @@ var (
 	traceIDKey           = "trace-id"           // traceid key
 	logIDKey             = "log-id"             // logid key
 	iowriteKey           = "io-write"           // iowrite key
+	groupKey             = "group"              // group key
 	monitoredResourceKey = "monitored-resource" // monitoredresource key
 )
 
@@ -58,5 +59,16 @@ func setIOWriter(c context.Context, w io.Writer) context.Context {
 // io.Writer getter
 func getIOWriter(c context.Context) (io.Writer, bool) {
 	w, ok := c.Value(&iowriteKey).(io.Writer)
+	return w, ok
+}
+
+// group setter
+func setGroup(c context.Context, id string) context.Context {
+	return context.WithValue(c, &groupKey, id)
+}
+
+// gropu getter
+func getGroup(c context.Context) (string, bool) {
+	w, ok := c.Value(&groupKey).(string)
 	return w, ok
 }
